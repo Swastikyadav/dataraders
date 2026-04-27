@@ -1,0 +1,9 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "workbench.colorTheme": "Cursor Dark",
+  "[mdx]": {
+    "editor.formatOnSave": false
+  },
+  "editor.tabSize": 2
+}
