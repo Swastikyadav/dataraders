@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// PRODUCT
+// =============================================================================
+
+model Product {
+  id                String   @id @default(cuid())
+  platform          String   // "shopify" | "amazon" | "woocommerce" | "etsy"
+  platformProductId String
+  title             String
+  vendor            String?
+  sku               String?
+  priceAmount       Int      // cents
+  priceCurrency     String   @default("USD")
+  inventoryQty      Int      @default(0)
+  status            String   @default("active") // "active" | "draft" | "archived"
+  imageUrl          String?
+  rawData           String?  // JSON blob of original platform payload
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  orderItems        OrderItem[]
+
+  @@unique([platform, platformProductId])
+  @@index([platform])
+  @@index([sku])
+}
+
+// =============================================================================
+// CUSTOMER
+// =============================================================================
+model Customer {
+  id                 String   @id @default(cuid())
+  platform           String
+  platformCustomerId String
+  email              String?
+  firstName          String?
+  lastName           String?
+  rawData            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  orders             Order[]
+
+  @@unique([platform, platformCustomerId])
+  @@index([email])
+}
+
+// =============================================================================
+// ORDER
+// =============================================================================
+model Order {
+  id              String   @id @default(cuid())
+  platform        String
+  platformOrderId String
+  orderNumber     String
+
+  totalAmount     Int      // cents — final paid amount
+  subtotalAmount  Int?
+  taxAmount       Int?
+  shippingAmount  Int?
+  discountAmount  Int?
+  currency        String   @default("USD")
+
+  // Canonical vocabularies:
+  //   financialStatus:   "paid" | "pending" | "refunded" | "cancelled"
+  //   fulfillmentStatus: "fulfilled" | "partial" | "unfulfilled"
+  financialStatus    String  @default("paid")
+  fulfillmentStatus  String  @default("unfulfilled")
+
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  customerEmail   String?   // denormalized for fast queries
+
+  placedAt        DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rawData         String?
+  items           OrderItem[]
+
+  @@unique([platform, platformOrderId])
+  @@index([platform])
+  @@index([placedAt])
+  @@index([customerEmail])
+}
+
+// =============================================================================
+// ORDER ITEM
+// =============================================================================
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Optional product reference — orders survive product deletion
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+
+  // Denormalized so analytics work even without a product join
+  title        String
+  sku          String?
+  quantity     Int
+  unitPrice    Int     // cents
+  totalPrice   Int     // cents
+
+  rawData      String?
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sku])
+}
+
+// =============================================================================
+// SYNC STATE
+// =============================================================================
+model SyncState {
+  id              String   @id @default(cuid())
+  platform        String   @unique
+  lastSyncedAt    DateTime
+  lastSyncStatus  String   // "success" | "error" | "partial"
+  lastSyncError   String?
+  ordersSynced    Int      @default(0)
+  productsSynced  Int      @default(0)
+  customersSynced Int      @default(0)
+}
