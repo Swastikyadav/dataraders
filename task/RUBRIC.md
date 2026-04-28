@@ -2,7 +2,7 @@
 
 **Problem / Task Name:** Build a canonical e-commerce schema with platform connectors
 
-**Problem Statement Reference:** `./PROBLEM_STATEMENT.md`
+**Problem Statement Reference:** [`./PROBLEM_STATEMENT.md`](./PROBLEM_STATEMENT.md)
 
 ---
 
