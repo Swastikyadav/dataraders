@@ -6,3 +6,113 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+// =============================================================================
+// CANONICAL DATA MODELS
+// =============================================================================
+
+model Product {
+  id            String    @id @default(cuid())
+  platform      String    // 'shopify' | 'amazon' | 'woocommerce' | 'etsy'
+  platformId    String
+  title         String
+  sku           String?
+  description   String?
+  price         Int       // cents
+  currency      String    @default("USD")
+  inventory     Int?
+  status        String    @default("active") // 'active' | 'inactive' | 'archived'
+  imageUrl      String?
+  rawData       Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  lineItems     LineItem[]
+
+  @@unique([platform, platformId])
+  @@index([sku])
+  @@index([platform])
+  @@index([createdAt])
+}
+
+model Customer {
+  id            String    @id @default(cuid())
+  platform      String
+  platformId    String
+  email         String
+  firstName     String?
+  lastName      String?
+  rawData       Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+
+  @@unique([platform, platformId])
+  @@index([email])
+  @@index([platform])
+}
+
+model Order {
+  id                String    @id @default(cuid())
+  platform          String
+  platformId        String
+  customerId        String?
+  customerEmail     String?
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  financialStatus   String    @default("pending") // 'paid' | 'pending' | 'refunded' | 'cancelled'
+  fulfillmentStatus String    @default("pending") // 'pending' | 'shipped' | 'unshipped' | 'processing' | 'delivered' | 'cancelled'
+  subtotal          Int       // cents
+  tax               Int       // cents
+  shipping          Int       // cents
+  discount          Int       // cents
+  total             Int       // cents
+  currency          String    @default("USD")
+  rawData           Json
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  lineItems         LineItem[]
+
+  @@unique([platform, platformId])
+  @@index([platform])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([financialStatus])
+}
+
+model LineItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  platform      String
+  sku           String?   // denormalized from purchase time
+  title         String
+  quantity      Int
+  unitPrice     Int       // cents
+  total         Int       // cents
+  rawData       Json
+  createdAt     DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sku])
+}
+
+model SyncLog {
+  id             String    @id @default(cuid())
+  platform       String
+  status         String    // 'success' | 'failed'
+  message        String?
+  productsCount  Int       @default(0)
+  ordersCount    Int       @default(0)
+  customersCount Int       @default(0)
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@unique([platform, startedAt])
+  @@index([platform])
+  @@index([startedAt])
+}
