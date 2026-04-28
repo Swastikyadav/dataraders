@@ -1,12 +1,3 @@
-import type {
-  CanonicalProduct,
-  CanonicalOrder,
-  FinancialStatus,
-  FulfillmentStatus,
-} from "@/lib/types/canonical";
-import type { Connector } from "./types";
-import { toCents } from "./types";
-
 // =============================================================================
 // WOOCOMMERCE CONNECTOR (DUMMY)
 // =============================================================================
@@ -62,7 +53,7 @@ interface WooOrder {
 }
 
 // Shared SKUs from Shopify at ~10% wholesale discount, plus Woo-only items
-const DUMMY_PRODUCTS: WooProduct[] = [
+export const DUMMY_PRODUCTS: WooProduct[] = [
   // Cross-listed with Shopify
   {
     id: 101,
@@ -185,7 +176,7 @@ const DUMMY_PRODUCTS: WooProduct[] = [
   },
 ];
 
-const DUMMY_ORDERS: WooOrder[] = generateDummyOrders();
+export const DUMMY_ORDERS: WooOrder[] = generateDummyOrders();
 
 function generateDummyOrders(): WooOrder[] {
   const orders: WooOrder[] = [];
@@ -305,93 +296,3 @@ function generateDummyOrders(): WooOrder[] {
 
   return orders.sort((a, b) => b.date_created.localeCompare(a.date_created));
 }
-
-function mapWooStatus(s: WooOrder["status"]): {
-  financial: FinancialStatus;
-  fulfillment: FulfillmentStatus;
-} {
-  switch (s) {
-    case "completed":
-      return { financial: "paid", fulfillment: "fulfilled" };
-    case "processing":
-      return { financial: "paid", fulfillment: "unfulfilled" };
-    case "on-hold":
-    case "pending":
-      return { financial: "pending", fulfillment: "unfulfilled" };
-    case "refunded":
-      return { financial: "refunded", fulfillment: "fulfilled" };
-    case "cancelled":
-    case "failed":
-      return { financial: "cancelled", fulfillment: "unfulfilled" };
-  }
-}
-
-async function fetchProducts(): Promise<CanonicalProduct[]> {
-  await sleep(40);
-  return DUMMY_PRODUCTS.map((p) => ({
-    platform: "woocommerce" as const,
-    platformProductId: String(p.id),
-    title: p.name,
-    vendor: p.categories[0]?.name,
-    sku: p.sku,
-    priceAmount: toCents(p.price),
-    priceCurrency: "USD",
-    inventoryQty: p.stock_quantity ?? 0,
-    status:
-      p.status === "publish"
-        ? "active"
-        : p.status === "draft"
-          ? "draft"
-          : "archived",
-    imageUrl: p.images[0]?.src,
-    rawData: p,
-  }));
-}
-
-async function fetchOrders(): Promise<CanonicalOrder[]> {
-  await sleep(40);
-  return DUMMY_ORDERS.map((o) => {
-    const { financial, fulfillment } = mapWooStatus(o.status);
-    return {
-      platform: "woocommerce" as const,
-      platformOrderId: String(o.id),
-      orderNumber: `#${o.number}`,
-      totalAmount: toCents(o.total),
-      subtotalAmount: toCents(o.subtotal),
-      taxAmount: toCents(o.total_tax),
-      shippingAmount: toCents(o.shipping_total),
-      discountAmount: toCents(o.discount_total),
-      currency: o.currency,
-      financialStatus: financial,
-      fulfillmentStatus: fulfillment,
-      customer: {
-        platform: "woocommerce" as const,
-        platformCustomerId: String(o.customer_id),
-        email: o.billing.email,
-        firstName: o.billing.first_name,
-        lastName: o.billing.last_name,
-      },
-      customerEmail: o.billing.email,
-      placedAt: new Date(o.date_created),
-      items: o.line_items.map((li) => ({
-        title: li.name,
-        sku: li.sku,
-        quantity: li.quantity,
-        unitPrice: Math.round(li.price * 100),
-        totalPrice: toCents(li.total),
-        rawData: li,
-      })),
-      rawData: o,
-    };
-  });
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-export const wooCommerceConnector: Connector = {
-  platform: "woocommerce",
-  fetchProducts,
-  fetchOrders,
-};

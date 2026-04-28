@@ -1,11 +1,3 @@
-import type {
-  CanonicalProduct,
-  CanonicalOrder,
-  FinancialStatus,
-  FulfillmentStatus,
-} from "@/lib/types/canonical";
-import type { Connector } from "./types";
-
 // =============================================================================
 // ETSY CONNECTOR (DUMMY)
 // =============================================================================
@@ -62,7 +54,7 @@ interface EtsyReceipt {
   }>;
 }
 
-const DUMMY_LISTINGS: EtsyListing[] = [
+export const DUMMY_LISTINGS: EtsyListing[] = [
   {
     listing_id: 1620304501,
     title: "Custom Vinyl Snowboard Decal — Your Name & Mountain",
@@ -131,7 +123,7 @@ const DUMMY_LISTINGS: EtsyListing[] = [
   },
 ];
 
-const DUMMY_RECEIPTS: EtsyReceipt[] = generateDummyReceipts();
+export const DUMMY_RECEIPTS: EtsyReceipt[] = generateDummyReceipts();
 
 function generateDummyReceipts(): EtsyReceipt[] {
   const receipts: EtsyReceipt[] = [];
@@ -221,99 +213,3 @@ function generateDummyReceipts(): EtsyReceipt[] {
 
   return receipts.sort((a, b) => b.created_timestamp - a.created_timestamp);
 }
-
-function etsyMoneyToCents(m: EtsyMoney): number {
-  return Math.round((m.amount / m.divisor) * 100);
-}
-
-function mapEtsyStatus(s: EtsyReceipt["status"]): {
-  financial: FinancialStatus;
-  fulfillment: FulfillmentStatus;
-} {
-  switch (s) {
-    case "completed":
-      return { financial: "paid", fulfillment: "fulfilled" };
-    case "shipped":
-      return { financial: "paid", fulfillment: "fulfilled" };
-    case "paid":
-    case "unshipped":
-      return { financial: "paid", fulfillment: "unfulfilled" };
-    case "fully_refunded":
-      return { financial: "refunded", fulfillment: "fulfilled" };
-    case "partially_refunded":
-      return { financial: "refunded", fulfillment: "partial" };
-    case "open":
-      return { financial: "pending", fulfillment: "unfulfilled" };
-  }
-}
-
-async function fetchProducts(): Promise<CanonicalProduct[]> {
-  await sleep(60);
-  return DUMMY_LISTINGS.map((l) => ({
-    platform: "etsy" as const,
-    platformProductId: String(l.listing_id),
-    title: l.title,
-    vendor: undefined,
-    sku: l.sku[0],
-    priceAmount: etsyMoneyToCents(l.price),
-    priceCurrency: l.price.currency_code,
-    inventoryQty: l.quantity,
-    status:
-      l.state === "active"
-        ? "active"
-        : l.state === "draft"
-          ? "draft"
-          : "archived",
-    imageUrl: l.images[0]?.url_570xN,
-    rawData: l,
-  }));
-}
-
-async function fetchOrders(): Promise<CanonicalOrder[]> {
-  await sleep(60);
-  return DUMMY_RECEIPTS.map((r) => {
-    const { financial, fulfillment } = mapEtsyStatus(r.status);
-    const [firstName, ...rest] = r.name.split(/\s+/);
-    return {
-      platform: "etsy" as const,
-      platformOrderId: String(r.receipt_id),
-      orderNumber: `Etsy-${r.receipt_id}`,
-      totalAmount: etsyMoneyToCents(r.grandtotal),
-      subtotalAmount: etsyMoneyToCents(r.subtotal),
-      taxAmount: etsyMoneyToCents(r.total_tax_cost),
-      shippingAmount: etsyMoneyToCents(r.total_shipping_cost),
-      discountAmount: etsyMoneyToCents(r.discount_amt),
-      currency: r.grandtotal.currency_code,
-      financialStatus: financial,
-      fulfillmentStatus: fulfillment,
-      customer: {
-        platform: "etsy" as const,
-        platformCustomerId: r.buyer_email,
-        email: r.buyer_email,
-        firstName,
-        lastName: rest.join(" ") || undefined,
-      },
-      customerEmail: r.buyer_email,
-      placedAt: new Date(r.created_timestamp * 1000),
-      items: r.transactions.map((t) => ({
-        title: t.title,
-        sku: t.sku,
-        quantity: t.quantity,
-        unitPrice: etsyMoneyToCents(t.price),
-        totalPrice: etsyMoneyToCents(t.price) * t.quantity,
-        rawData: t,
-      })),
-      rawData: r,
-    };
-  });
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-export const etsyConnector: Connector = {
-  platform: "etsy",
-  fetchProducts,
-  fetchOrders,
-};

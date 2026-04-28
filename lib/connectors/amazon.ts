@@ -1,12 +1,3 @@
-import type {
-  CanonicalProduct,
-  CanonicalOrder,
-  FinancialStatus,
-  FulfillmentStatus,
-} from "@/lib/types/canonical";
-import type { Connector } from "./types";
-import { toCents } from "./types";
-
 // =============================================================================
 // AMAZON CONNECTOR (DUMMY)
 // =============================================================================
@@ -52,7 +43,7 @@ interface AmazonSpApiProduct {
 // Shared SKUs from Shopify (Amazon prices are ~5% lower — realistic for a
 // channel where the merchant absorbs Amazon fees) plus 2 Amazon-only items.
 
-const DUMMY_PRODUCTS: AmazonSpApiProduct[] = [
+export const DUMMY_PRODUCTS: AmazonSpApiProduct[] = [
   // Cross-listed with Shopify
   {
     ASIN: "B0C7H8K9M1",
@@ -130,7 +121,7 @@ const DUMMY_PRODUCTS: AmazonSpApiProduct[] = [
   },
 ];
 
-const DUMMY_ORDERS: AmazonSpApiOrder[] = generateDummyOrders();
+export const DUMMY_ORDERS: AmazonSpApiOrder[] = generateDummyOrders();
 
 function generateDummyOrders(): AmazonSpApiOrder[] {
   const orders: AmazonSpApiOrder[] = [];
@@ -216,117 +207,3 @@ function randomDigits(n: number): string {
     "",
   );
 }
-
-function mapAmazonOrderStatus(s: AmazonSpApiOrder["OrderStatus"]): {
-  financial: FinancialStatus;
-  fulfillment: FulfillmentStatus;
-} {
-  switch (s) {
-    case "Shipped":
-      return { financial: "paid", fulfillment: "fulfilled" };
-    case "PartiallyShipped":
-      return { financial: "paid", fulfillment: "partial" };
-    case "Unshipped":
-      return { financial: "paid", fulfillment: "unfulfilled" };
-    case "Canceled":
-      return { financial: "cancelled", fulfillment: "unfulfilled" };
-    case "Pending":
-      return { financial: "pending", fulfillment: "unfulfilled" };
-    case "Unfulfillable":
-      return { financial: "paid", fulfillment: "unfulfilled" };
-  }
-}
-
-async function fetchProducts(): Promise<CanonicalProduct[]> {
-  await sleep(50);
-  return DUMMY_PRODUCTS.map((p) => ({
-    platform: "amazon" as const,
-    platformProductId: p.ASIN,
-    title: p.Title,
-    vendor: p.Brand,
-    sku: p.SellerSKU,
-    priceAmount: toCents(p.Price.Amount),
-    priceCurrency: p.Price.CurrencyCode,
-    inventoryQty: p.FulfillmentAvailability?.Quantity ?? 0,
-    status:
-      p.Status === "Active"
-        ? "active"
-        : p.Status === "Inactive"
-          ? "archived"
-          : "draft",
-    imageUrl: p.ImageUrl,
-    rawData: p,
-  }));
-}
-
-async function fetchOrders(): Promise<CanonicalOrder[]> {
-  await sleep(50);
-  return DUMMY_ORDERS.map((o) => {
-    const { financial, fulfillment } = mapAmazonOrderStatus(o.OrderStatus);
-    const subtotal = o.Items.reduce(
-      (s, it) => s + toCents(it.ItemPrice.Amount),
-      0,
-    );
-    const tax = o.Items.reduce(
-      (s, it) => s + toCents(it.ItemTax?.Amount ?? "0"),
-      0,
-    );
-
-    let firstName: string | undefined;
-    let lastName: string | undefined;
-    if (o.BuyerInfo?.BuyerName) {
-      const parts = o.BuyerInfo.BuyerName.split(/\s+/);
-      firstName = parts[0];
-      lastName = parts.slice(1).join(" ") || undefined;
-    }
-
-    const customer = o.BuyerInfo
-      ? {
-          platform: "amazon" as const,
-          platformCustomerId:
-            o.BuyerInfo.BuyerEmail ?? `anon-${o.AmazonOrderId}`,
-          email: o.BuyerInfo.BuyerEmail,
-          firstName,
-          lastName,
-        }
-      : undefined;
-
-    return {
-      platform: "amazon" as const,
-      platformOrderId: o.AmazonOrderId,
-      orderNumber: o.AmazonOrderId,
-      totalAmount: toCents(o.OrderTotal.Amount),
-      subtotalAmount: subtotal,
-      taxAmount: tax,
-      shippingAmount: 0,
-      discountAmount: 0,
-      currency: o.OrderTotal.CurrencyCode,
-      financialStatus: financial,
-      fulfillmentStatus: fulfillment,
-      customer,
-      customerEmail: o.BuyerInfo?.BuyerEmail,
-      placedAt: new Date(o.PurchaseDate),
-      items: o.Items.map((it) => ({
-        title: it.Title,
-        sku: it.SellerSKU,
-        quantity: it.QuantityOrdered,
-        unitPrice: Math.round(
-          toCents(it.ItemPrice.Amount) / it.QuantityOrdered,
-        ),
-        totalPrice: toCents(it.ItemPrice.Amount),
-        rawData: it,
-      })),
-      rawData: o,
-    };
-  });
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-export const amazonConnector: Connector = {
-  platform: "amazon",
-  fetchProducts,
-  fetchOrders,
-};

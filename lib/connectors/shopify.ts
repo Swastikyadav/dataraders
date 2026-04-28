@@ -1,16 +1,5 @@
 "use server";
 
-import type {
-  CanonicalProduct,
-  CanonicalOrder,
-  CanonicalOrderItem,
-  FinancialStatus,
-  FulfillmentStatus,
-  ProductStatus,
-} from "@/lib/types/canonical";
-import type { Connector } from "./types";
-import { toCents } from "./types";
-
 // =============================================================================
 // SHOPIFY CONNECTOR
 // =============================================================================
@@ -94,56 +83,10 @@ async function graphql<T>(query: string): Promise<T> {
 }
 
 // -----------------------------------------------------------------------------
-// Status normalization — Shopify's vocabulary → canonical.
-// Each platform has its own enum values; we collapse them to canonical here
-// so the dashboard never sees Shopify-specific strings.
-// -----------------------------------------------------------------------------
-function mapFinancialStatus(s: string | null | undefined): FinancialStatus {
-  switch (s?.toLowerCase()) {
-    case "paid":
-    case "partially_paid":
-      return "paid";
-    case "refunded":
-    case "partially_refunded":
-      return "refunded";
-    case "voided":
-    case "cancelled":
-      return "cancelled";
-    default:
-      return "pending";
-  }
-}
-
-function mapFulfillmentStatus(s: string | null | undefined): FulfillmentStatus {
-  switch (s?.toLowerCase()) {
-    case "fulfilled":
-      return "fulfilled";
-    case "partial":
-    case "partially_fulfilled":
-      return "partial";
-    default:
-      return "unfulfilled";
-  }
-}
-
-function mapProductStatus(s: string | null | undefined): ProductStatus {
-  switch (s?.toLowerCase()) {
-    case "active":
-      return "active";
-    case "draft":
-      return "draft";
-    case "archived":
-      return "archived";
-    default:
-      return "active";
-  }
-}
-
-// -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
 
-async function fetchProducts(): Promise<CanonicalProduct[]> {
+export async function fetchProducts() {
   type Resp = {
     products: {
       edges: Array<{
@@ -195,22 +138,10 @@ async function fetchProducts(): Promise<CanonicalProduct[]> {
     }
   `);
 
-  return data.products.edges.map(({ node }) => ({
-    platform: "shopify" as const,
-    platformProductId: node.id, // gid://shopify/Product/12345
-    title: node.title,
-    vendor: node.vendor ?? undefined,
-    sku: node.variants.edges[0]?.node.sku ?? undefined,
-    priceAmount: toCents(node.priceRangeV2.minVariantPrice.amount),
-    priceCurrency: node.priceRangeV2.minVariantPrice.currencyCode,
-    inventoryQty: node.totalInventory ?? 0,
-    status: mapProductStatus(node.status),
-    imageUrl: node.featuredImage?.url,
-    rawData: node,
-  }));
+  return data.products.edges;
 }
 
-async function fetchOrders(): Promise<CanonicalOrder[]> {
+export async function fetchOrders() {
   type Resp = {
     orders: {
       edges: Array<{
@@ -318,53 +249,5 @@ async function fetchOrders(): Promise<CanonicalOrder[]> {
     }
   `);
 
-  return data.orders.edges.map(({ node }) => {
-    const items: CanonicalOrderItem[] = node.lineItems.edges.map(
-      ({ node: li }) => ({
-        title: li.title,
-        sku: li.sku ?? undefined,
-        quantity: li.quantity,
-        unitPrice: toCents(li.originalUnitPriceSet.shopMoney.amount),
-        totalPrice: toCents(li.discountedTotalSet.shopMoney.amount),
-        rawData: li,
-      }),
-    );
-
-    const customer = node.customer
-      ? {
-          platform: "shopify" as const,
-          platformCustomerId: node.customer.id,
-          email: node.customer.email ?? undefined,
-          firstName: node.customer.firstName ?? undefined,
-          lastName: node.customer.lastName ?? undefined,
-        }
-      : undefined;
-
-    return {
-      platform: "shopify" as const,
-      platformOrderId: node.id,
-      orderNumber: node.name,
-      totalAmount: toCents(node.currentTotalPriceSet.shopMoney.amount),
-      subtotalAmount: toCents(node.currentSubtotalPriceSet.shopMoney.amount),
-      taxAmount: node.currentTotalTaxSet
-        ? toCents(node.currentTotalTaxSet.shopMoney.amount)
-        : undefined,
-      shippingAmount: toCents(node.totalShippingPriceSet.shopMoney.amount),
-      discountAmount: toCents(node.currentTotalDiscountsSet.shopMoney.amount),
-      currency: node.currentTotalPriceSet.shopMoney.currencyCode,
-      financialStatus: mapFinancialStatus(node.displayFinancialStatus),
-      fulfillmentStatus: mapFulfillmentStatus(node.displayFulfillmentStatus),
-      customer,
-      customerEmail: node.customer?.email ?? node.email ?? undefined,
-      placedAt: new Date(node.createdAt),
-      items,
-      rawData: node,
-    };
-  });
+  return data.orders.edges;
 }
-
-export const shopifyConnector: Connector = {
-  platform: "shopify",
-  fetchProducts,
-  fetchOrders,
-};
