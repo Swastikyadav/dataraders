@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  /* === Colors: The Indigo Grid ============================================ */
+  --color-primary: #020229;
+  --color-primary-container: #1a1b41;
+  --color-on-primary: #ffffff;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-tertiary-container: #46001e;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: #f9fafb;
+  --color-surface: #f9f9ff;
+  --color-surface-container-low: #f1f3ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #e8e9f5;
+
+  --color-outline: #79767f;
+  --color-outline-variant: #c8c5cf;
+
+  --color-foreground: #111827;
+  --color-on-surface: #111827;
+  --color-on-surface-variant: #4b5563;
+
+  --color-positive: #059669;
+  --color-accent-magenta: #ff007f;
+
+  /* === Typography: The IBM Standard ======================================= */
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-display-sm: 1.75rem;
+  --text-display-sm--line-height: 2.25rem;
+  --text-display-sm--letter-spacing: -0.02em;
+
+  --text-headline-sm: 1.5rem;
+  --text-headline-sm--line-height: 2rem;
+  --text-headline-sm--letter-spacing: -0.02em;
+
+  --text-title-md: 1rem;
+  --text-title-md--line-height: 1.5rem;
+
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.25rem;
+
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1rem;
+  --text-label-md--letter-spacing: 0.02em;
+
+  --text-label-sm: 0.6875rem;
+  --text-label-sm--line-height: 1rem;
+  --text-label-sm--letter-spacing: 0.05em;
+
+  --tracking-tight: -0.02em;
+  --tracking-architectural: 0.05em;
+  --tracking-brand: 0.2em;
+
+  /* === Spacing (4px grid; explicit overrides per DESIGN.md §1) ============ */
+  --spacing-16: 3.5rem;
+  --spacing-24: 5.5rem;
+
+  /* === Radius (sharp / technical) ========================================= */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+
+  /* === Motion (no bounce / no lift) ======================================= */
+  --ease-technical: linear;
+  --duration-50: 50ms;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-outline-variant) 15%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
 }
