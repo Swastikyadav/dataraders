@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { SideNavBar } from "../components/sideNavBar";
+import { TopNavBar } from "../components/topNavBar";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
@@ -32,7 +33,10 @@ export default function RootLayout({
     >
       <body className="flex min-h-screen text-on-surface">
         <SideNavBar />
-        <div className="relative flex min-w-0 flex-1 flex-col">{children}</div>
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <TopNavBar />
+          {children}
+        </div>
       </body>
     </html>
   );
