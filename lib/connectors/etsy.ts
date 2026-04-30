@@ -129,6 +129,19 @@ const DUMMY_LISTINGS: EtsyListing[] = [
     shop_section_id: 15,
     images: [],
   },
+  // Hand-finished version of the cross-platform ProEdge release — same SKU
+  // as Amazon and WooCommerce so anomaly detection rolls up across channels.
+  {
+    listing_id: 1620304507,
+    title: "Hand-Finished ProEdge Carbon Snowboard — Limited Run",
+    state: "active",
+    quantity: 6,
+    price: { amount: 95000, divisor: 100, currency_code: "USD" },
+    sku: ["SB-EDGE-PRO"],
+    url: "https://etsy.com/listing/1620304507",
+    shop_section_id: 15,
+    images: [],
+  },
 ];
 
 const DUMMY_RECEIPTS: EtsyReceipt[] = generateDummyReceipts();
@@ -219,7 +232,81 @@ function generateDummyReceipts(): EtsyReceipt[] {
     });
   }
 
+  receipts.push(...buildEdgeProAnomalyReceipts());
+
   return receipts.sort((a, b) => b.created_timestamp - a.created_timestamp);
+}
+
+// Etsy slice of the SB-EDGE-PRO anomaly: 3 recent (1 refunded) + 6 baseline
+// (0 refunded). See amazon.ts for the cross-platform totals.
+function buildEdgeProAnomalyReceipts(): EtsyReceipt[] {
+  const listing = DUMMY_LISTINGS.find((l) => l.sku[0] === "SB-EDGE-PRO");
+  if (!listing) return [];
+
+  const buyerPool = [
+    { name: "Mei Ostrom", email: "m.ostrom@example.com" },
+    { name: "Theo Larsen", email: "tlarsen.art@example.com" },
+    { name: "Avery Quinn", email: "averyq@example.com" },
+  ];
+
+  type Spec = { daysAgo: number; status: EtsyReceipt["status"] };
+  const specs: Spec[] = [
+    // Recent: 3 orders, 1 refunded
+    { daysAgo: 2, status: "completed" },
+    { daysAgo: 4, status: "fully_refunded" },
+    { daysAgo: 6, status: "shipped" },
+    // Baseline: 6 orders, 0 refunded
+    { daysAgo: 10, status: "completed" },
+    { daysAgo: 14, status: "completed" },
+    { daysAgo: 18, status: "completed" },
+    { daysAgo: 22, status: "completed" },
+    { daysAgo: 26, status: "completed" },
+    { daysAgo: 28, status: "shipped" },
+  ];
+
+  const now = Date.now();
+
+  return specs.map((spec, i) => {
+    const ts = Math.floor(
+      (now - spec.daysAgo * 86400000 - ((i * 7) % 24) * 3600000) / 1000,
+    );
+    const buyer = buyerPool[i % buyerPool.length]!;
+    const subtotalCents = etsyMoneyToCents(listing.price);
+    const shippingCents = 1495;
+    const totalCents = subtotalCents + shippingCents;
+    return {
+      receipt_id: 3500000000 + i + 1,
+      status: spec.status,
+      is_paid: true,
+      is_shipped: spec.status === "completed" || spec.status === "shipped",
+      buyer_email: buyer.email,
+      name: buyer.name,
+      grandtotal: { amount: totalCents, divisor: 100, currency_code: "USD" },
+      subtotal: {
+        amount: subtotalCents,
+        divisor: 100,
+        currency_code: "USD",
+      },
+      total_tax_cost: { amount: 0, divisor: 100, currency_code: "USD" },
+      total_shipping_cost: {
+        amount: shippingCents,
+        divisor: 100,
+        currency_code: "USD",
+      },
+      discount_amt: { amount: 0, divisor: 100, currency_code: "USD" },
+      created_timestamp: ts,
+      transactions: [
+        {
+          transaction_id: 9500000 + i + 1,
+          title: listing.title,
+          sku: listing.sku[0] ?? "",
+          quantity: 1,
+          price: { ...listing.price },
+          listing_id: listing.listing_id,
+        },
+      ],
+    };
+  });
 }
 
 function etsyMoneyToCents(m: EtsyMoney): number {

@@ -13,6 +13,18 @@ export function formatMoney(cents: number, currency = "USD") {
   }).format(cents / 100);
 }
 
+export function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+export function formatPercent(ratio: number, fractionDigits = 1) {
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(ratio);
+}
+
 export function customerName(c: {
   email: string | null;
   firstName: string | null;

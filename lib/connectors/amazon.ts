@@ -24,7 +24,8 @@ interface AmazonSpApiOrder {
     | "PartiallyShipped"
     | "Shipped"
     | "Canceled"
-    | "Unfulfillable";
+    | "Unfulfillable"
+    | "Refunded";
   OrderTotal: { CurrencyCode: string; Amount: string };
   BuyerInfo?: { BuyerEmail?: string; BuyerName?: string };
   Items: Array<{
@@ -128,6 +129,18 @@ const DUMMY_PRODUCTS: AmazonSpApiProduct[] = [
     Price: { Amount: "42.50", CurrencyCode: "USD" },
     FulfillmentAvailability: { Quantity: 88 },
   },
+
+  // Limited release with a recently-discovered binding-mount defect — drives
+  // the cross-platform return-rate anomaly shown on the dashboard banner.
+  {
+    ASIN: "B0EDGE9PRO9",
+    SellerSKU: "SB-EDGE-PRO",
+    Title: "Hearth & Powder ProEdge Carbon Snowboard - Limited Release",
+    Brand: "Hearth & Powder",
+    Status: "Active",
+    Price: { Amount: "899.99", CurrencyCode: "USD" },
+    FulfillmentAvailability: { Quantity: 18 },
+  },
 ];
 
 const DUMMY_ORDERS: AmazonSpApiOrder[] = generateDummyOrders();
@@ -208,7 +221,77 @@ function generateDummyOrders(): AmazonSpApiOrder[] {
     });
   }
 
+  orders.push(...buildEdgeProAnomalyOrders());
+
   return orders.sort((a, b) => b.PurchaseDate.localeCompare(a.PurchaseDate));
+}
+
+// SB-EDGE-PRO seed: 5 recent orders (2 refunded) + 10 baseline orders (0
+// refunded). Combined with the Etsy and WooCommerce seeds for the same SKU
+// this produces a 12-order recent window with 5 refunds vs a 25-order
+// baseline with 0 refunds — well above the SPIKE_RATIO threshold.
+function buildEdgeProAnomalyOrders(): AmazonSpApiOrder[] {
+  const product = DUMMY_PRODUCTS.find((p) => p.SellerSKU === "SB-EDGE-PRO");
+  if (!product) return [];
+
+  const unitPrice = parseFloat(product.Price.Amount);
+  const tax = unitPrice * 0.08;
+  const grandTotal = unitPrice + tax;
+
+  const buyerPool = [
+    { email: "qa.aoki@example.com", name: "Quinn Aoki" },
+    { email: "lwhitney@example.com", name: "Lucas Whitney" },
+    { email: "mhsu@example.com", name: "Mira Hsu" },
+    { email: "rdiazpark@example.com", name: "Roman Diaz-Park" },
+    { email: "spatel.ed@example.com", name: "Sasha Patel" },
+  ];
+
+  type Spec = { daysAgo: number; status: AmazonSpApiOrder["OrderStatus"] };
+  const specs: Spec[] = [
+    // Recent window: 5 orders, 2 refunded
+    { daysAgo: 1, status: "Refunded" },
+    { daysAgo: 2, status: "Shipped" },
+    { daysAgo: 3, status: "Refunded" },
+    { daysAgo: 5, status: "Shipped" },
+    { daysAgo: 6, status: "Shipped" },
+    // Baseline window: 10 orders, 0 refunded
+    { daysAgo: 9, status: "Shipped" },
+    { daysAgo: 11, status: "Shipped" },
+    { daysAgo: 13, status: "Shipped" },
+    { daysAgo: 15, status: "Shipped" },
+    { daysAgo: 17, status: "Shipped" },
+    { daysAgo: 19, status: "Shipped" },
+    { daysAgo: 22, status: "Shipped" },
+    { daysAgo: 25, status: "Shipped" },
+    { daysAgo: 27, status: "Shipped" },
+    { daysAgo: 29, status: "Shipped" },
+  ];
+
+  const now = Date.now();
+
+  return specs.map((spec, i) => {
+    const date = new Date(
+      now - spec.daysAgo * 86400000 - ((i * 11) % 24) * 3600000,
+    );
+    const buyer = buyerPool[i % buyerPool.length]!;
+    return {
+      AmazonOrderId: `114-EDGE-${String(i + 1).padStart(7, "0")}`,
+      PurchaseDate: date.toISOString(),
+      OrderStatus: spec.status,
+      OrderTotal: { CurrencyCode: "USD", Amount: grandTotal.toFixed(2) },
+      BuyerInfo: { BuyerEmail: buyer.email, BuyerName: buyer.name },
+      Items: [
+        {
+          ASIN: product.ASIN,
+          SellerSKU: product.SellerSKU,
+          Title: product.Title,
+          QuantityOrdered: 1,
+          ItemPrice: { CurrencyCode: "USD", Amount: unitPrice.toFixed(2) },
+          ItemTax: { CurrencyCode: "USD", Amount: tax.toFixed(2) },
+        },
+      ],
+    };
+  });
 }
 
 function randomDigits(n: number): string {
@@ -234,6 +317,8 @@ function mapAmazonOrderStatus(s: AmazonSpApiOrder["OrderStatus"]): {
       return { financial: "pending", fulfillment: "unfulfilled" };
     case "Unfulfillable":
       return { financial: "paid", fulfillment: "unfulfilled" };
+    case "Refunded":
+      return { financial: "refunded", fulfillment: "fulfilled" };
   }
 }
 

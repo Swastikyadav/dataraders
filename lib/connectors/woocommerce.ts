@@ -183,6 +183,21 @@ const DUMMY_PRODUCTS: WooProduct[] = [
     images: [],
     categories: [{ name: "Accessories" }],
   },
+  // Wholesale listing of the cross-platform ProEdge release. Shares SKU
+  // with Amazon and Etsy so anomaly detection aggregates across channels.
+  {
+    id: 110,
+    name: "ProEdge Carbon Snowboard - Limited Release",
+    slug: "proedge-carbon",
+    sku: "SB-EDGE-PRO",
+    price: "810.00",
+    regular_price: "899.99",
+    status: "publish",
+    stock_quantity: 12,
+    stock_status: "instock",
+    images: [],
+    categories: [{ name: "Snowboards" }],
+  },
 ];
 
 const DUMMY_ORDERS: WooOrder[] = generateDummyOrders();
@@ -303,7 +318,110 @@ function generateDummyOrders(): WooOrder[] {
     });
   }
 
+  orders.push(...buildEdgeProAnomalyOrders());
+
   return orders.sort((a, b) => b.date_created.localeCompare(a.date_created));
+}
+
+// WooCommerce slice of the SB-EDGE-PRO anomaly: 4 recent (2 refunded) + 9
+// baseline (0 refunded). See amazon.ts for the cross-platform totals.
+function buildEdgeProAnomalyOrders(): WooOrder[] {
+  const product = DUMMY_PRODUCTS.find((p) => p.sku === "SB-EDGE-PRO");
+  if (!product) return [];
+
+  const buyerPool = [
+    {
+      id: 5101,
+      first_name: "Iris",
+      last_name: "Holloway",
+      email: "iholloway@example.com",
+    },
+    {
+      id: 5102,
+      first_name: "Daniel",
+      last_name: "Park",
+      email: "d.park@example.com",
+    },
+    {
+      id: 5103,
+      first_name: "Sage",
+      last_name: "Romero",
+      email: "sromero@example.com",
+    },
+    {
+      id: 5104,
+      first_name: "Hugo",
+      last_name: "Brennan",
+      email: "hbrennan@example.com",
+    },
+  ];
+
+  type Spec = { daysAgo: number; status: WooOrder["status"] };
+  const specs: Spec[] = [
+    // Recent: 4 orders, 2 refunded
+    { daysAgo: 1, status: "refunded" },
+    { daysAgo: 3, status: "completed" },
+    { daysAgo: 5, status: "refunded" },
+    { daysAgo: 6, status: "completed" },
+    // Baseline: 9 orders, 0 refunded
+    { daysAgo: 9, status: "completed" },
+    { daysAgo: 12, status: "completed" },
+    { daysAgo: 15, status: "completed" },
+    { daysAgo: 17, status: "completed" },
+    { daysAgo: 20, status: "completed" },
+    { daysAgo: 23, status: "completed" },
+    { daysAgo: 25, status: "completed" },
+    { daysAgo: 28, status: "completed" },
+    { daysAgo: 30, status: "completed" },
+  ];
+
+  const now = Date.now();
+  const unitPrice = parseFloat(product.price);
+
+  return specs.map((spec, i) => {
+    const date = new Date(
+      now - spec.daysAgo * 86400000 - ((i * 13) % 24) * 3600000,
+    );
+    const buyer = buyerPool[i % buyerPool.length]!;
+    const subtotal = unitPrice;
+    const tax = subtotal * 0.07;
+    const shipping = 0;
+    const total = subtotal + tax + shipping;
+    return {
+      id: 9000 + i + 1,
+      number: `${9000 + i + 1}`,
+      status: spec.status,
+      currency: "USD",
+      date_created: date.toISOString(),
+      date_paid:
+        spec.status === "completed" || spec.status === "refunded"
+          ? date.toISOString()
+          : null,
+      total: total.toFixed(2),
+      subtotal: subtotal.toFixed(2),
+      total_tax: tax.toFixed(2),
+      shipping_total: shipping.toFixed(2),
+      discount_total: "0.00",
+      customer_id: buyer.id,
+      billing: {
+        first_name: buyer.first_name,
+        last_name: buyer.last_name,
+        email: buyer.email,
+      },
+      line_items: [
+        {
+          id: 12000 + i + 1,
+          name: product.name,
+          product_id: product.id,
+          sku: product.sku,
+          quantity: 1,
+          price: unitPrice,
+          total: subtotal.toFixed(2),
+          subtotal: subtotal.toFixed(2),
+        },
+      ],
+    };
+  });
 }
 
 function mapWooStatus(s: WooOrder["status"]): {
