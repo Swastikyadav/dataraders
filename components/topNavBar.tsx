@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   Search,
   Calendar,
   Bell,
-  HelpCircle,
   CircleUserRound,
+  RefreshCcw,
 } from "lucide-react";
 
 import {
@@ -17,9 +17,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropDownMenu";
 import { SearchPalette } from "@/components/searchPalette";
+import { runSync } from "@/lib/actions/sync";
+import { cn } from "@/lib/utils";
 
 const iconButtonClass =
-  "text-outline transition-colors duration-50 ease-technical hover:text-primary";
+  "text-outline transition-colors duration-50 ease-technical hover:text-primary cursor-pointer";
 
 const DATE_RANGES = [
   { value: "7d", label: "Last 7 Days" },
@@ -32,6 +34,13 @@ type DateRangeValue = (typeof DATE_RANGES)[number]["value"];
 export function TopNavBar() {
   const [range, setRange] = useState<DateRangeValue>("7d");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [syncing, startSync] = useTransition();
+
+  const handleSync = () => {
+    startSync(async () => {
+      await runSync();
+    });
+  };
 
   const activeLabel =
     DATE_RANGES.find((r) => r.value === range)?.label ?? DATE_RANGES[0].label;
@@ -106,8 +115,20 @@ export function TopNavBar() {
           >
             <Bell className="h-5 w-5" strokeWidth={1.75} />
           </button>
-          <button type="button" aria-label="Help" className={iconButtonClass}>
-            <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
+          <button
+            type="button"
+            aria-label="Sync connectors"
+            className={cn(
+              iconButtonClass,
+              syncing && "pointer-events-none opacity-60",
+            )}
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            <RefreshCcw
+              className={cn("h-5 w-5", syncing && "animate-spin")}
+              strokeWidth={1.75}
+            />
           </button>
           <button
             type="button"

@@ -1,0 +1,25 @@
+"use client";
+
+import { LineChart } from "@/components/ui/lineChart";
+import { formatMoney } from "@/lib/utils";
+
+type Point = { day: string; revenue: number };
+
+type Props = {
+  data: Point[];
+};
+
+export function SalesChartView({ data }: Props) {
+  return (
+    <LineChart
+      data={data}
+      index="day"
+      categories={["revenue"]}
+      colors={["magenta"]}
+      valueFormatter={(v) => formatMoney(v)}
+      showLegend={false}
+      className="h-full"
+      yAxisWidth={80}
+    />
+  );
+}

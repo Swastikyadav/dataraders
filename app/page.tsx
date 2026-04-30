@@ -1,5 +1,6 @@
 import { AnomalyBanner } from "@/components/anomalyBanner";
 import { KpiGrid } from "@/components/kpiGrid";
+import { SalesChart } from "@/components/salesChart";
 import { getAnomalies } from "@/lib/actions/anomalies";
 
 export default async function Dashboard() {
@@ -9,6 +10,7 @@ export default async function Dashboard() {
     <main className="flex flex-col gap-6 p-6">
       <AnomalyBanner anomalies={anomalies} />
       <KpiGrid />
+      <SalesChart />
     </main>
   );
 }
