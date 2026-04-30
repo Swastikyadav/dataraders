@@ -18,7 +18,7 @@ export function SalesChartView({ data }: Props) {
       colors={["magenta"]}
       valueFormatter={(v) => formatMoney(v)}
       showLegend={false}
-      className="h-full"
+      className="h-full [&_.recharts-cartesian-axis-tick-value]:text-xs"
       yAxisWidth={80}
     />
   );
