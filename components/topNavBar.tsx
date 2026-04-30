@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
   Calendar,
@@ -16,6 +16,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropDownMenu";
+import { SearchPalette } from "@/components/searchPalette";
 
 const iconButtonClass =
   "text-outline transition-colors duration-50 ease-technical hover:text-primary";
@@ -30,23 +31,39 @@ type DateRangeValue = (typeof DATE_RANGES)[number]["value"];
 
 export function TopNavBar() {
   const [range, setRange] = useState<DateRangeValue>("7d");
+  const [searchOpen, setSearchOpen] = useState(false);
+
   const activeLabel =
     DATE_RANGES.find((r) => r.value === range)?.label ?? DATE_RANGES[0].label;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-6 py-2 font-sans text-sm uppercase tracking-wider">
       <div className="flex items-center gap-4">
-        <div className="relative">
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="relative flex w-64 cursor-pointer items-center gap-2 rounded-sm bg-surface-container-low py-1.5 pr-2 pl-10 text-left text-xs text-outline/60 transition-colors duration-50 ease-technical hover:bg-surface-container-highest focus:ring-1 focus:ring-accent-magenta focus:outline-none"
+        >
           <Search
             className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-outline"
             strokeWidth={1.75}
           />
-          <input
-            type="text"
-            placeholder="SEARCH DATASETS..."
-            className="w-64 rounded-sm border-none bg-surface-container-low py-1.5 pr-4 pl-10 text-xs placeholder:text-outline/60 focus:ring-1 focus:ring-accent-magenta focus:outline-none"
-          />
-        </div>
+          <span className="flex-1 truncate">SEARCH DATASETS...</span>
+          <kbd className="rounded-sm border border-outline-variant bg-surface-container-lowest px-1.5 py-0.5 font-mono text-label-sm tracking-normal text-on-surface-variant">
+            ⌘K
+          </kbd>
+        </button>
       </div>
 
       <div className="flex items-center gap-6">
@@ -54,7 +71,7 @@ export function TopNavBar() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-full items-center gap-2 border-b-2 border-primary py-1 font-bold text-primary outline-none cursor-pointer"
+              className="flex h-full cursor-pointer items-center gap-2 border-b-2 border-primary py-1 font-bold text-primary outline-none"
             >
               <span>{activeLabel}</span>
               <Calendar className="h-4 w-4" strokeWidth={1.75} />
@@ -101,6 +118,8 @@ export function TopNavBar() {
           </button>
         </div>
       </div>
+
+      <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 }
