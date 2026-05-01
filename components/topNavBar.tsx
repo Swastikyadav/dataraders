@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Calendar,
@@ -24,6 +25,7 @@ const iconButtonClass =
   "text-outline transition-colors duration-50 ease-technical hover:text-primary cursor-pointer";
 
 const DATE_RANGES = [
+  { value: "all", label: "All Time" },
   { value: "7d", label: "Last 7 Days" },
   { value: "28d", label: "Last 28 Days" },
   { value: "90d", label: "Last 90 Days" },
@@ -31,10 +33,31 @@ const DATE_RANGES = [
 
 type DateRangeValue = (typeof DATE_RANGES)[number]["value"];
 
+const VALID_RANGES = DATE_RANGES.map((r) => r.value) as readonly string[];
+
 export function TopNavBar() {
-  const [range, setRange] = useState<DateRangeValue>("7d");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
   const [syncing, startSync] = useTransition();
+
+  const rangeParam = searchParams.get("range");
+  const range: DateRangeValue =
+    rangeParam && VALID_RANGES.includes(rangeParam)
+      ? (rangeParam as DateRangeValue)
+      : "all";
+
+  const handleRangeChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "all") params.delete("range");
+    else params.set("range", value);
+    // Reset pagination so users don't land on an out-of-range page after
+    // narrowing the window.
+    params.delete("page");
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  };
 
   const handleSync = () => {
     startSync(async () => {
@@ -92,7 +115,7 @@ export function TopNavBar() {
           >
             <DropdownMenuRadioGroup
               value={range}
-              onValueChange={(value) => setRange(value as DateRangeValue)}
+              onValueChange={handleRangeChange}
             >
               {DATE_RANGES.map((option) => (
                 <DropdownMenuRadioItem

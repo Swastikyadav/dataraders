@@ -96,7 +96,7 @@ export function SyncStateTableView({ data }: Props) {
       columns={columns}
       data={data}
       title="Connector Sync State"
-      emptyMessage="No sync runs yet — trigger a sync from the top bar."
+      emptyMessage="No sync runs yet, trigger a sync from the top bar."
     />
   );
 }

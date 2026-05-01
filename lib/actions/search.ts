@@ -6,6 +6,7 @@ export type OrderHit = {
   id: string;
   platform: string;
   orderNumber: string;
+  customerId: string | null;
   customerEmail: string | null;
   totalAmount: number;
   currency: string;
@@ -56,6 +57,7 @@ export async function searchAll(query: string): Promise<SearchResults> {
         id: true,
         platform: true,
         orderNumber: true,
+        customerId: true,
         customerEmail: true,
         totalAmount: true,
         currency: true,

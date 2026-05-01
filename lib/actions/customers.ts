@@ -2,6 +2,7 @@
 
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { rangeStart, type DateRange } from "./_shared";
 
 export type CustomerRow = {
   id: string;
@@ -25,12 +26,14 @@ export async function getCustomers(opts?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  range?: DateRange;
 }): Promise<CustomersResult> {
   const page = Math.max(1, opts?.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, opts?.pageSize ?? 20));
   const search = opts?.search?.trim();
+  const start = rangeStart(opts?.range ?? "all");
 
-  const where = search
+  const searchClause = search
     ? {
         OR: [
           { email: { contains: search } },
@@ -39,6 +42,25 @@ export async function getCustomers(opts?: {
         ],
       }
     : undefined;
+
+  // Range narrows the cohort to customers with at least one paid order in
+  // the window. LTV / orders count below stay all-time so the metric
+  // matches the column header.
+  const activityClause = start
+    ? {
+        orders: {
+          some: {
+            financialStatus: "paid",
+            placedAt: { gte: start },
+          },
+        },
+      }
+    : undefined;
+
+  const where =
+    searchClause && activityClause
+      ? { AND: [searchClause, activityClause] }
+      : (searchClause ?? activityClause);
 
   const [customers, total] = await Promise.all([
     db.customer.findMany({

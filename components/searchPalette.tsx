@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Package, ShoppingCart, User } from "lucide-react";
 
 import {
@@ -28,8 +29,14 @@ export function SearchPalette({ open, onOpenChange }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults>(EMPTY);
   const [, startTransition] = useTransition();
+  const router = useRouter();
 
   const trimmed = query.trim();
+
+  const navigate = (href: string) => {
+    onOpenChange(false);
+    router.push(href);
+  };
 
   useEffect(() => {
     if (!trimmed) return;
@@ -75,10 +82,13 @@ export function SearchPalette({ open, onOpenChange }: Props) {
                 <CommandItem
                   key={o.id}
                   value={`order-${o.id}`}
-                  onSelect={() => {
-                    onOpenChange(false);
-                    location.replace("/orders");
-                  }}
+                  onSelect={() =>
+                    navigate(
+                      o.customerId
+                        ? `/orders?customerId=${encodeURIComponent(o.customerId)}`
+                        : "/orders",
+                    )
+                  }
                   className="cursor-pointer"
                 >
                   <ShoppingCart />
@@ -106,10 +116,11 @@ export function SearchPalette({ open, onOpenChange }: Props) {
                 <CommandItem
                   key={c.id}
                   value={`customer-${c.id}`}
-                  onSelect={() => {
-                    onOpenChange(false);
-                    location.replace("/customers");
-                  }}
+                  onSelect={() =>
+                    navigate(
+                      `/orders?customerId=${encodeURIComponent(c.id)}`,
+                    )
+                  }
                   className="cursor-pointer"
                 >
                   <User />
@@ -139,10 +150,13 @@ export function SearchPalette({ open, onOpenChange }: Props) {
                 <CommandItem
                   key={p.id}
                   value={`product-${p.id}`}
-                  onSelect={() => {
-                    onOpenChange(false);
-                    location.replace("/analytics");
-                  }}
+                  onSelect={() =>
+                    navigate(
+                      p.sku
+                        ? `/analytics?skus=${encodeURIComponent(p.sku)}`
+                        : "/analytics",
+                    )
+                  }
                   className="cursor-pointer"
                 >
                   <Package />
