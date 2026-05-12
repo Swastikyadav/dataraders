@@ -1,4 +1,4 @@
-import { CustomersTable } from "@/components/customersTable";
+import { CustomersTable } from "@/components/customtersTable";
 import { type DateRange } from "@/lib/actions/_shared";
 
 const VALID_RANGES: DateRange[] = ["7d", "28d", "90d", "all"];

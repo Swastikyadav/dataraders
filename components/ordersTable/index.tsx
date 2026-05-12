@@ -1,4 +1,4 @@
-import { OrdersTableView } from "@/components/ordersTableView";
+import { OrdersTableClient } from "@/components/ordersTable/ordersTableClient";
 import { getOrders } from "@/lib/actions/orders";
 import { type DateRange } from "@/lib/actions/_shared";
 
@@ -21,16 +21,20 @@ export async function OrdersTable({
   page = 1,
   pageSize = 20,
 }: Props) {
-  const { rows, total, page: actualPage, pageSize: actualPageSize } =
-    await getOrders({
-      range,
-      platform,
-      financialStatus,
-      sku,
-      customerId,
-      page,
-      pageSize,
-    });
+  const {
+    rows,
+    total,
+    page: actualPage,
+    pageSize: actualPageSize,
+  } = await getOrders({
+    range,
+    platform,
+    financialStatus,
+    sku,
+    customerId,
+    page,
+    pageSize,
+  });
 
   const filterParts: string[] = [];
   if (customerId) {
@@ -45,7 +49,7 @@ export async function OrdersTable({
     : undefined;
 
   return (
-    <OrdersTableView
+    <OrdersTableClient
       data={rows}
       total={total}
       page={actualPage}

@@ -90,7 +90,7 @@ type Props = {
   data: SyncStateRow[];
 };
 
-export function SyncStateTableView({ data }: Props) {
+export function SyncStateTableClient({ data }: Props) {
   return (
     <DataTable
       columns={columns}

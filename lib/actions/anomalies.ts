@@ -2,8 +2,8 @@
 
 import { db } from "@/lib/db";
 
-const RECENT_DAYS = 7;
-const BASELINE_DAYS = 23;
+const RECENT_DAYS = 30;
+const BASELINE_DAYS = 60;
 const MIN_RECENT_ORDERS = 10;
 const MIN_RECENT_RATE = 0.05;
 const SPIKE_RATIO = 2;
@@ -25,9 +25,7 @@ export type Anomaly = {
 export async function getAnomalies(): Promise<Anomaly[]> {
   const now = Date.now();
   const recentStart = new Date(now - RECENT_DAYS * DAY_MS);
-  const baselineStart = new Date(
-    now - (RECENT_DAYS + BASELINE_DAYS) * DAY_MS,
-  );
+  const baselineStart = new Date(now - (RECENT_DAYS + BASELINE_DAYS) * DAY_MS);
   const detectedAt = new Date(now);
 
   const rows = await db.$queryRaw<

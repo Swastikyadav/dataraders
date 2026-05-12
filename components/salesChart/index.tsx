@@ -1,4 +1,4 @@
-import { SalesChartView } from "@/components/salesChartView";
+import { SalesChartClient } from "@/components/salesChart/salesChartClient";
 import { getOrders } from "@/lib/actions/orders";
 import { type DateRange } from "@/lib/actions/_shared";
 
@@ -73,7 +73,7 @@ export async function SalesChart({ range = "all" }: Props) {
         </div>
       </header>
       <div className="flex-1 p-6">
-        <SalesChartView data={data} />
+        <SalesChartClient data={data} />
       </div>
     </section>
   );

@@ -9,7 +9,7 @@ type Props = {
   data: Point[];
 };
 
-export function SalesChartView({ data }: Props) {
+export function SalesChartClient({ data }: Props) {
   return (
     <LineChart
       data={data}

@@ -19,7 +19,7 @@ const formatTimestamp = (d: Date) =>
     hour12: false,
   });
 
-export function SyncStateCardView({ states }: Props) {
+export function SyncStateCardClient({ states }: Props) {
   const [syncing, startSync] = useTransition();
 
   const total = states.length;

@@ -1,4 +1,4 @@
-import { ProductsTableView } from "@/components/productsTableView";
+import { ProductsTableClient } from "@/components/productsTable/productsTableClient";
 import { getProducts } from "@/lib/actions/products";
 import { type DateRange } from "@/lib/actions/_shared";
 
@@ -22,12 +22,13 @@ export async function ProductsTable({
     pageSize: actualPageSize,
   } = await getProducts({ range, skus, page, pageSize });
 
-  const filterSummary = skus && skus.length > 0
-    ? `${skus.length} SKU${skus.length === 1 ? "" : "s"} filtered`
-    : undefined;
+  const filterSummary =
+    skus && skus.length > 0
+      ? `${skus.length} SKU${skus.length === 1 ? "" : "s"} filtered`
+      : undefined;
 
   return (
-    <ProductsTableView
+    <ProductsTableClient
       data={rows}
       total={total}
       page={actualPage}

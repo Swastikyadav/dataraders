@@ -1,4 +1,4 @@
-import { CustomersTableView } from "@/components/customersTableView";
+import { CustomersTableClient } from "@/components/customtersTable/customersTableClient";
 import { getCustomers } from "@/lib/actions/customers";
 import { type DateRange } from "@/lib/actions/_shared";
 
@@ -36,7 +36,7 @@ export async function CustomersTable({
     filterParts.length > 0 ? filterParts.join(" · ") : undefined;
 
   return (
-    <CustomersTableView
+    <CustomersTableClient
       data={rows}
       total={total}
       page={actualPage}
